@@ -12,6 +12,7 @@
 #include <zircon/rights.h>
 #include <fbl/alloc_checker.h>
 #include <object/pci_device_dispatcher.h>
+#include <platform.h>
 
 PciInterruptDispatcher::~PciInterruptDispatcher() {
     if (device_) {
@@ -30,10 +31,14 @@ pcie_irq_handler_retval_t PciInterruptDispatcher::IrqThunk(const PcieDevice& dev
                                                            void* ctx) {
     DEBUG_ASSERT(ctx);
     PciInterruptDispatcher* thiz = (PciInterruptDispatcher*)ctx;
+    if (!thiz->timestamp_) {
+        // only record timestamp if this is the first IRQ since we started waiting
+        thiz->timestamp_ = current_time();
+    }
 
     // Mask the IRQ at the PCIe hardware level if we can, and (if any threads
     // just became runable) tell the kernel to trigger a reschedule event.
-    if (thiz->signal() > 0) {
+    if (thiz->Signal(1ul << IRQ_SLOT) > 0) {
         return PCIE_IRQRET_MASK_AND_RESCHED;
     } else {
         return PCIE_IRQRET_MASK;
@@ -84,25 +89,64 @@ zx_status_t PciInterruptDispatcher::Create(
     return ZX_OK;
 }
 
-zx_status_t PciInterruptDispatcher::InterruptComplete() {
-    DEBUG_ASSERT(device_ != nullptr);
-    unsignal();
+zx_status_t PciInterruptDispatcher::Bind(uint32_t slot, uint32_t vector, uint32_t options) {
+    canary_.Assert();
 
-    if (maskable_)
-        device_->UnmaskIrq(irq_id_);
+    // PCI interrupt handles are automatically bound on creation and unbound on handle close
+    return ZX_ERR_NOT_SUPPORTED;
+}
 
+zx_status_t PciInterruptDispatcher::Unbind(uint32_t slot) {
+    canary_.Assert();
+
+    // PCI interrupt handles are automatically bound on creation and unbound on handle close
+    return ZX_ERR_NOT_SUPPORTED;
+}
+
+zx_status_t PciInterruptDispatcher::WaitForInterrupt(uint64_t* out_slots) {
+    canary_.Assert();
+
+    return Wait(out_slots);
+}
+
+zx_status_t PciInterruptDispatcher::GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) {
+    canary_.Assert();
+
+    if (slot != IRQ_SLOT)
+        return ZX_ERR_INVALID_ARGS;
+    if (!timestamp_)
+        return ZX_ERR_BAD_STATE;
+
+    *out_timestamp = timestamp_;
     return ZX_OK;
 }
 
-zx_status_t PciInterruptDispatcher::UserSignal() {
-    DEBUG_ASSERT(device_ != nullptr);
+zx_status_t PciInterruptDispatcher::UserSignal(uint32_t slot, zx_time_t timestamp) {
+    canary_.Assert();
+
+    return ZX_ERR_NOT_SUPPORTED;
+}
+
+zx_status_t PciInterruptDispatcher::UserCancel() {
+    canary_.Assert();
 
     if (maskable_)
         device_->MaskIrq(irq_id_);
 
-    signal(true, ZX_ERR_CANCELED);
-
+    Cancel();
     return ZX_OK;
+}
+
+void PciInterruptDispatcher::PreWait() {
+    if (maskable_) {
+        device_->UnmaskIrq(irq_id_);
+    }
+    // clear timestamp so we can know when first IRQ occurs
+    timestamp_ = 0;
+}
+
+void PciInterruptDispatcher::PostWait(uint64_t signals) {
+    // nothing to do here
 }
 
 #endif  // if WITH_DEV_PCIE

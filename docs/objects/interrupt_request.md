@@ -20,7 +20,10 @@ to userspace processes.
 
 ## SYSCALLS
 
-+ [interrupt_create](../syscalls/interrupt_create.md) - create an interrupt handle
-+ [interrupt_wait](../syscalls/interrupt_wait.md) - wait for an interrupt on an interrupt handle
-+ [interrupt_complete](../syscalls/interrupt_complete.md) - clear and unmask an interrupt handle
-+ [interrupt_signal](../syscalls/interrupt_signal.md) - unblocks a wait on an interrupt handle
++ [interrupt_create](../syscalls/interrupt_create.md) - Create an interrupt handle
++ [interrupt_bind](../syscalls/interrupt_bind.md) - Bind an interrupt vector to interrupt handle
++ [interrupt_unbind](../syscalls/interrupt_unbind.md) - Unind an interrupt vector from interrupt handle
++ [interrupt_wait](../syscalls/interrupt_wait.md) - Wait for an interrupt on an interrupt handle
++ [interrupt_get_timestamp](../syscalls/interrupt_get_timestamp.md) - Get the timestamp for an interrupt
++ [interrupt_signal](../syscalls/interrupt_signal.md) - Signals a virtual interrupt on an interrupt handle
++ [interrupt_cancel](../syscalls/interrupt_cancel.md) - Cancels a call to the interupt_wait syscall

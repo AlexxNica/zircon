@@ -60,7 +60,7 @@ namespace i915 {
 
 int Controller::IrqLoop() {
     for (;;) {
-        if (zx_interrupt_wait(irq_) != ZX_OK) {
+        if (zx_interrupt_wait(irq_, nullptr) != ZX_OK) {
             zxlogf(TRACE, "i915: interrupt wait failed\n");
             break;
         }
@@ -68,8 +68,6 @@ int Controller::IrqLoop() {
         auto interrupt_ctrl = registers::MasterInterruptControl::Get().ReadFrom(mmio_space_.get());
         interrupt_ctrl.set_enable_mask(0);
         interrupt_ctrl.WriteTo(mmio_space_.get());
-
-        zx_interrupt_complete(irq_);
 
         if (interrupt_ctrl.sde_int_pending()) {
             auto sde_int_identity = registers::SdeInterruptBase::Get(registers::SdeInterruptBase::kSdeIntIdentity).ReadFrom(mmio_space_.get());
@@ -562,7 +560,7 @@ Controller::Controller(zx_device_t* parent)
 
 Controller::~Controller() {
     if (irq_ != ZX_HANDLE_INVALID) {
-        zx_interrupt_signal(irq_);
+        zx_interrupt_cancel(irq_);
 
         thrd_join(irq_thread_, nullptr);
 
