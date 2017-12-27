@@ -132,9 +132,10 @@
 ## DDK
 + [cache_flush](syscalls/cache_flush.md) - Flush CPU data and/or instruction caches
 + [interrupt_create](syscalls/interrupt_create.md) - Create an interrupt handle
++ [interrupt_bind](syscalls/interrupt_bind.md) - Bind an interrupt vector to interrupt handle
 + [interrupt_wait](syscalls/interrupt_wait.md) - Wait for an interrupt on an interrupt handle
-+ [interrupt_complete](syscalls/interrupt_complete.md) - Clear and unmask an interrupt handle
-+ [interrupt_signal](syscalls/interrupt_signal.md) - Unblocks the interupt_wait syscall
++ [interrupt_get_timestamp](syscalls/interrupt_get_timestamp.md) - Get the timestamp for an interrupt
++ [interrupt_signal](syscalls/interrupt_signal.md) - Signals a virtual interrupt on an interrupt handle
 + acpi_uefi_rsdp
 + mmap_device_io
 + set_framebuffer
