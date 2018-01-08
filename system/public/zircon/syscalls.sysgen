@@ -531,10 +531,6 @@ syscall interrupt_bind
     (handle: zx_handle_t, slot: uint32_t, hrsrc: zx_handle_t, vector: uint32_t, options: uint32_t)
     returns (zx_status_t);
 
-syscall interrupt_unbind
-    (handle: zx_handle_t, slot: uint32_t)
-    returns (zx_status_t);
-
 syscall interrupt_wait blocking
     (handle: zx_handle_t)
     returns (zx_status_t, slots: uint64_t optional);

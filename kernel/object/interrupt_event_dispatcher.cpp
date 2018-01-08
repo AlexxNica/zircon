@@ -136,31 +136,6 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
     return ZX_OK;
 }
 
-zx_status_t InterruptEventDispatcher::Unbind(uint32_t slot) {
-    canary_.Assert();
-
-    if (slot >= ZX_INTERRUPT_MAX_WAIT_SLOTS)
-        return ZX_ERR_INVALID_ARGS;
-
-    fbl::AutoLock lock(&lock_);
-
-    size_t size = interrupts_.size();
-    for (size_t i = 0; i < size; i++) {
-        Interrupt& interrupt = interrupts_[i];
-        if (interrupt.slot == slot) {
-            if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL)) {
-                mask_interrupt(interrupt.vector);
-                register_int_handler(interrupt.vector, nullptr, nullptr);
-            }
-            interrupts_.erase(i);
-
-            return ZX_OK;
-        }
-    }
-
-    return ZX_ERR_NOT_FOUND;
-}
-
 zx_status_t InterruptEventDispatcher::WaitForInterrupt(uint64_t* out_slots) {
     canary_.Assert();
 

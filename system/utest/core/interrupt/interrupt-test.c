@@ -49,10 +49,6 @@ static bool interrupt_test(void) {
     ASSERT_EQ(zx_interrupt_cancel(handle), ZX_OK, "");
     ASSERT_EQ(zx_interrupt_wait(handle, &slots), ZX_ERR_CANCELED, "");
 
-    ASSERT_EQ(zx_interrupt_unbind(handle, UNBOUND_SLOT), ZX_ERR_NOT_FOUND, "");
-    ASSERT_EQ(zx_interrupt_unbind(handle, BOUND_SLOT), ZX_OK, "");
-    ASSERT_EQ(zx_interrupt_unbind(handle, BOUND_SLOT), ZX_ERR_NOT_FOUND, "");
-
     ASSERT_EQ(zx_handle_close(handle), ZX_OK, "");
 
     END_TEST;

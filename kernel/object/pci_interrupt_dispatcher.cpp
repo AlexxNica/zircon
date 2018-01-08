@@ -96,13 +96,6 @@ zx_status_t PciInterruptDispatcher::Bind(uint32_t slot, uint32_t vector, uint32_
     return ZX_ERR_NOT_SUPPORTED;
 }
 
-zx_status_t PciInterruptDispatcher::Unbind(uint32_t slot) {
-    canary_.Assert();
-
-    // PCI interrupt handles are automatically bound on creation and unbound on handle close
-    return ZX_ERR_NOT_SUPPORTED;
-}
-
 zx_status_t PciInterruptDispatcher::WaitForInterrupt(uint64_t* out_slots) {
     canary_.Assert();
 

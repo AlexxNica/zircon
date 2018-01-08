@@ -41,8 +41,6 @@ or another thread is currently waiting in **interrupt_wait**().
 
 [interrupt_create](interrupt_create.md),
 [interrupt_bind](interrupt_bind.md),
-[interrupt_unbind](interrupt_unbind.md),
 [interrupt_wait](interrupt_wait.md),
 [interrupt_signal](interrupt_signal.md),
-[interrupt_cancel](interrupt_cancel.md).
 [handle_close](handle_close.md).

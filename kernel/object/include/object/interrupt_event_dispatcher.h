@@ -24,7 +24,6 @@ public:
     ~InterruptEventDispatcher() final;
 
     zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) final;
-    zx_status_t Unbind(uint32_t slot) final;
     zx_status_t WaitForInterrupt(uint64_t* out_slots) final;
     zx_status_t GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) final;
     zx_status_t UserSignal(uint32_t slot, zx_time_t timestamp) final;

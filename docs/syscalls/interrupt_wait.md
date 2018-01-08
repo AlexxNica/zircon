@@ -16,8 +16,7 @@ zx_status_t zx_interrupt_wait(zx_handle_t handle, uint64_t* out_slots);
 
 **interrupt_wait**() is a blocking syscall which causes the caller to
 wait until either an interrupt occurs for an interrupt vector bound to
-*handle*, or another thread calls **zx_interrupt_signal()** or
-**zx_interrupt_cancel()** on *handle*.
+*handle*, another thread calls **zx_interrupt_signal()** or *handle* is closed.
 
 Upon successful return, the *out_slots* parameter returns a bitmask
 of the slots that have been signalled, either via a hardware interrupt
@@ -48,8 +47,6 @@ or a virtual interrupt was signaled via the **interrupt_signal**() syscall.
 
 [interrupt_create](interrupt_create.md),
 [interrupt_bind](interrupt_bind.md),
-[interrupt_unbind](interrupt_unbind.md),
 [interrupt_get_timestamp](interrupt_get_timestamp.md),
 [interrupt_signal](interrupt_signal.md),
-[interrupt_cancel](interrupt_cancel.md).
 [handle_close](handle_close.md).

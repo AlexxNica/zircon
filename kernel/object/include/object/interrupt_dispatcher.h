@@ -27,7 +27,6 @@ public:
     virtual zx_status_t UserCancel() = 0;
 
     virtual zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) = 0;
-    virtual zx_status_t Unbind(uint32_t slot) = 0;
     virtual zx_status_t WaitForInterrupt(uint64_t* out_slots) = 0;
     virtual zx_status_t GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) = 0;
     virtual void PreWait() = 0;

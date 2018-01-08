@@ -221,9 +221,8 @@ For edge-triggered interrupts, the interrupt remains unmasked.
 The interrupt thread should not perform any long-running tasks. For drivers
 that perform lengthy tasks, use a worker thread.
 
-You can unblock a call to `zx_interrupt_wait()` with the
-[zx_interrupt_cancel()](../syscalls/interrupt_cancel.md) syscall.
-This is necessary to shut down the interrupt thread during driver clean up.
+Closing an interrupt handle will unblock a call to `zx_interrupt_wait()`,
+which allows shutting down an interrupt thread during driver clean up.
 
 ## Ioctl
 

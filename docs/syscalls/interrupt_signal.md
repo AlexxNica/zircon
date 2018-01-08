@@ -43,8 +43,6 @@ In particular, **interrupt_signal**() is not supported for PCI interrupt handles
 
 [interrupt_create](interrupt_create.md),
 [interrupt_bind](interrupt_bind.md),
-[interrupt_unbind](interrupt_unbind.md),
 [interrupt_wait](interrupt_wait.md),
 [interrupt_get_timestamp](interrupt_get_timestamp.md),
-[interrupt_cancel](interrupt_cancel.md).
 [handle_close](handle_close.md).

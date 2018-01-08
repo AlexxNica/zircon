@@ -47,9 +47,7 @@ parameter is an invalid pointer.
 ## SEE ALSO
 
 [interrupt_bind](interrupt_bind.md),
-[interrupt_unbind](interrupt_unbind.md),
 [interrupt_wait](interrupt_wait.md),
 [interrupt_get_timestamp](interrupt_get_timestamp.md),
 [interrupt_signal](interrupt_signal.md),
-[interrupt_cancel](interrupt_cancel.md).
 [handle_close](handle_close.md).

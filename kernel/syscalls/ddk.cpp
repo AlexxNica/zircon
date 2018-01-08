@@ -91,18 +91,6 @@ zx_status_t sys_interrupt_bind(zx_handle_t handle, uint32_t slot, zx_handle_t hr
     return interrupt->Bind(slot, vector, options);
 }
 
-zx_status_t sys_interrupt_unbind(zx_handle_t handle, uint32_t slot) {
-    LTRACEF("handle %x\n", handle);
-
-    auto up = ProcessDispatcher::GetCurrent();
-    fbl::RefPtr<InterruptDispatcher> interrupt;
-    zx_status_t status = up->GetDispatcher(handle, &interrupt);
-    if (status != ZX_OK)
-        return status;
-
-    return interrupt->Unbind(slot);
-}
-
 zx_status_t sys_interrupt_wait(zx_handle_t handle, user_out_ptr<uint64_t> out_slots) {
     LTRACEF("handle %x\n", handle);
 

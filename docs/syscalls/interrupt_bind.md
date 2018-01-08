@@ -18,8 +18,7 @@ zx_status_t zx_interrupt_bind(zx_handle_t handle, uint32_t slot, zx_handle_t res
 
 **interrupt_bind**() binds an interrupt vector to an interrupt handle.
 The *slot* parameter is a number to be associated with the interrupt vector for use by the
-**interrupt_wait**(), **interrupt_get_timestamp**(), **interrupt_signal**()
-and **interrupt_unbind**() syscalls.
+**interrupt_wait**(), **interrupt_get_timestamp**() and **interrupt_signal**() syscalls.
 *slot must be less than **ZX_INTERRUPT_MAX_WAIT_SLOTS**.
 
 After calling this, **interrupt_wait**() can be used to wait for interrupts
@@ -70,9 +69,7 @@ In particular, **interrupt_bind**() is not supported for PCI interrupt handles.
 ## SEE ALSO
 
 [interrupt_create](interrupt_create.md),
-[interrupt_unbind](interrupt_unbind.md),
 [interrupt_wait](interrupt_wait.md),
 [interrupt_get_timestamp](interrupt_get_timestamp.md),
 [interrupt_signal](interrupt_signal.md),
-[interrupt_cancel](interrupt_cancel.md).
 [handle_close](handle_close.md).
