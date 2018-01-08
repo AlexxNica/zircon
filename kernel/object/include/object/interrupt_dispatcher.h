@@ -24,18 +24,12 @@ public:
 
     // Signal the IRQ from non-IRQ state in response to a user-land request.
     virtual zx_status_t UserSignal(uint32_t slot, zx_time_t timestamp) = 0;
-    virtual zx_status_t UserCancel() = 0;
 
     virtual zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) = 0;
     virtual zx_status_t WaitForInterrupt(uint64_t* out_slots) = 0;
     virtual zx_status_t GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) = 0;
     virtual void PreWait() = 0;
     virtual void PostWait(uint64_t signals) = 0;
-
-    virtual void on_zero_handles() final {
-        // Ensure any waiters stop waiting
-        event_signal_etc(&event_, false, ZX_ERR_CANCELED);
-    }
 
 protected:
     InterruptDispatcher() : signals_(0) {

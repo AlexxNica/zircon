@@ -137,15 +137,7 @@ zx_status_t sys_interrupt_signal(zx_handle_t handle, uint32_t slot, zx_time_t ti
 }
 
 zx_status_t sys_interrupt_cancel(zx_handle_t handle) {
-    LTRACEF("handle %x\n", handle);
-
-    auto up = ProcessDispatcher::GetCurrent();
-    fbl::RefPtr<InterruptDispatcher> interrupt;
-    zx_status_t status = up->GetDispatcher(handle, &interrupt);
-    if (status != ZX_OK)
-        return status;
-
-    return interrupt->UserCancel();
+    return -1;
 }
 
 zx_status_t sys_vmo_create_contiguous(zx_handle_t hrsrc, size_t size,

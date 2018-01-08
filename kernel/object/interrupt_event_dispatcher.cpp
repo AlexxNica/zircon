@@ -189,16 +189,13 @@ zx_status_t InterruptEventDispatcher::UserSignal(uint32_t slot, zx_time_t timest
     return ZX_ERR_NOT_FOUND;
 }
 
-zx_status_t InterruptEventDispatcher::UserCancel() {
-    canary_.Assert();
-
+void InterruptEventDispatcher::on_zero_handles() {
     for (const auto& interrupt : interrupts_) {
         if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL))
             mask_interrupt(interrupt.vector);
     }
 
     Cancel();
-    return ZX_OK;
 }
 
 enum handler_return InterruptEventDispatcher::IrqHandler(void* ctx) {

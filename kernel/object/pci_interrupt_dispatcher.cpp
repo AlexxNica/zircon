@@ -120,14 +120,11 @@ zx_status_t PciInterruptDispatcher::UserSignal(uint32_t slot, zx_time_t timestam
     return ZX_ERR_NOT_SUPPORTED;
 }
 
-zx_status_t PciInterruptDispatcher::UserCancel() {
-    canary_.Assert();
-
+void PciInterruptDispatcher::on_zero_handles() {
     if (maskable_)
         device_->MaskIrq(irq_id_);
 
     Cancel();
-    return ZX_OK;
 }
 
 void PciInterruptDispatcher::PreWait() {
