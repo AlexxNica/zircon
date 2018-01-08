@@ -114,12 +114,6 @@ zx_status_t PciInterruptDispatcher::GetTimeStamp(uint32_t slot, zx_time_t* out_t
     return ZX_OK;
 }
 
-zx_status_t PciInterruptDispatcher::UserSignal(uint32_t slot, zx_time_t timestamp) {
-    canary_.Assert();
-
-    return ZX_ERR_NOT_SUPPORTED;
-}
-
 void PciInterruptDispatcher::on_zero_handles() {
     if (maskable_)
         device_->MaskIrq(irq_id_);

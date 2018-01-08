@@ -27,7 +27,6 @@ public:
     zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) final;
     zx_status_t WaitForInterrupt(uint64_t* out_slots) final;
     zx_status_t GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) final;
-    zx_status_t UserSignal(uint32_t slot, zx_time_t timestamp) final;
     void on_zero_handles() final;
     void PreWait() final;
     void PostWait(uint64_t signals) final;

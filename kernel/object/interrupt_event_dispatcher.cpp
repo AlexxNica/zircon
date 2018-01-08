@@ -167,28 +167,6 @@ zx_status_t InterruptEventDispatcher::GetTimeStamp(uint32_t slot, zx_time_t* out
     return ZX_ERR_NOT_FOUND;
 }
 
-zx_status_t InterruptEventDispatcher::UserSignal(uint32_t slot, zx_time_t timestamp) {
-    canary_.Assert();
-
-    if (slot >= ZX_INTERRUPT_MAX_WAIT_SLOTS)
-        return ZX_ERR_INVALID_ARGS;
-
-    size_t size = interrupts_.size();
-    for (size_t i = 0; i < size; i++) {
-        Interrupt& interrupt = interrupts_[i];
-        if (interrupt.slot == slot) {
-            if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL))
-                return ZX_ERR_BAD_STATE;
-            if (!interrupt.timestamp)
-                interrupt.timestamp = timestamp;
-            Signal(SIGNAL_MASK(slot), true);
-            return ZX_OK;
-        }
-    }
-
-    return ZX_ERR_NOT_FOUND;
-}
-
 void InterruptEventDispatcher::on_zero_handles() {
     for (const auto& interrupt : interrupts_) {
         if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL))
@@ -204,7 +182,8 @@ enum handler_return InterruptEventDispatcher::IrqHandler(void* ctx) {
         // only record timestamp if this is the first IRQ since we started waiting
         interrupt->timestamp = current_time();
     }
-    InterruptEventDispatcher* thiz = interrupt->dispatcher;
+    InterruptEventDispatcher* thiz
+            = reinterpret_cast<InterruptEventDispatcher *>(interrupt->dispatcher);
 
     if (interrupt->flags & ZX_INTERRUPT_MODE_LEVEL_MASK)
         mask_interrupt(interrupt->vector);

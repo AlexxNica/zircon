@@ -8,8 +8,6 @@
 
 #include <zircon/types.h>
 #include <fbl/canary.h>
-#include <fbl/mutex.h>
-#include <fbl/vector.h>
 #include <object/interrupt_dispatcher.h>
 #include <sys/types.h>
 
@@ -26,29 +24,14 @@ public:
     zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) final;
     zx_status_t WaitForInterrupt(uint64_t* out_slots) final;
     zx_status_t GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) final;
-    zx_status_t UserSignal(uint32_t slot, zx_time_t timestamp) final;
     void on_zero_handles() final;
     void PreWait() final;
     void PostWait(uint64_t signals) final;
 
 private:
-    struct Interrupt {
-        InterruptEventDispatcher* dispatcher;
-        zx_time_t timestamp;
-        uint32_t flags;
-        uint32_t vector;
-        uint32_t slot;
-    };
-
     explicit InterruptEventDispatcher() {}
 
     static enum handler_return IrqHandler(void* ctx);
 
     fbl::Canary<fbl::magic("INED")> canary_;
-
-    // interrupts bound to this dispatcher
-    fbl::Vector<Interrupt> interrupts_ TA_GUARDED(lock_);
-    fbl::Mutex lock_;
-    // currently signaled interrupt slots
-    uint64_t current_slots_;
 };

@@ -10,6 +10,26 @@ InterruptDispatcher::InterruptDispatcher() : signals_(0) {
     event_init(&event_, false, EVENT_FLAG_AUTOUNSIGNAL);
 }
 
+zx_status_t InterruptDispatcher::UserSignal(uint32_t slot, zx_time_t timestamp) {
+    if (slot >= ZX_INTERRUPT_MAX_WAIT_SLOTS)
+        return ZX_ERR_INVALID_ARGS;
+
+    size_t size = interrupts_.size();
+    for (size_t i = 0; i < size; i++) {
+        Interrupt& interrupt = interrupts_[i];
+        if (interrupt.slot == slot) {
+            if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL))
+                return ZX_ERR_BAD_STATE;
+            if (!interrupt.timestamp)
+                interrupt.timestamp = timestamp;
+            Signal(SIGNAL_MASK(slot), true);
+            return ZX_OK;
+        }
+    }
+
+    return ZX_ERR_NOT_FOUND;
+}
+
 zx_status_t InterruptDispatcher::Wait(uint64_t* out_signals) {
     while (true) {
         uint64_t signals = signals_.exchange(0);
