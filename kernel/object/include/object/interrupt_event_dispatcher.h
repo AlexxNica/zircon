@@ -22,7 +22,6 @@ public:
     ~InterruptEventDispatcher() final;
 
     zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) final;
-    zx_status_t WaitForInterrupt(uint64_t* out_slots) final;
 
 protected:
     void on_zero_handles() final;

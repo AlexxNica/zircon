@@ -106,12 +106,6 @@ zx_status_t PciInterruptDispatcher::Bind(uint32_t slot, uint32_t vector, uint32_
     return AddSlot(slot, vector, options);
 }
 
-zx_status_t PciInterruptDispatcher::WaitForInterrupt(uint64_t* out_slots) {
-    canary_.Assert();
-
-    return Wait(out_slots);
-}
-
 void PciInterruptDispatcher::on_zero_handles() {
     if (maskable_)
         device_->MaskIrq(irq_id_);

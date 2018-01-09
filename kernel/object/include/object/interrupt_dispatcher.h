@@ -24,11 +24,11 @@ public:
 
     zx_obj_type_t get_type() const final { return ZX_OBJ_TYPE_INTERRUPT; }
 
+    virtual zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) = 0;
+
     // Signal the IRQ from non-IRQ state in response to a user-land request.
     zx_status_t UserSignal(uint32_t slot, zx_time_t timestamp);
-
-    virtual zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) = 0;
-    virtual zx_status_t WaitForInterrupt(uint64_t* out_slots) = 0;
+    zx_status_t WaitForInterrupt(uint64_t* out_slots);
     zx_status_t GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp);
 
 protected:
@@ -44,7 +44,6 @@ protected:
 protected:
     InterruptDispatcher();
 
-    zx_status_t Wait(uint64_t* out_signals);
     int Signal(uint64_t signals, bool resched = false);
     int Cancel();
 

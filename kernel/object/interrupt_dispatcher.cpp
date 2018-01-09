@@ -46,6 +46,26 @@ zx_status_t InterruptDispatcher::AddSlot(uint32_t slot, uint32_t vector, uint32_
     return ZX_OK;
 }
 
+zx_status_t InterruptDispatcher::WaitForInterrupt(uint64_t* out_slots) {
+    while (true) {
+        uint64_t signals = signals_.exchange(0);
+        if (signals) {
+            if (signals & SIGNAL_MASK(ZX_INTERRUPT_CANCEL)) {
+                return ZX_ERR_CANCELED;
+            }
+            PostWait(signals);
+            *out_slots = signals;
+            return ZX_OK;
+        }
+
+        PreWait();
+        zx_status_t status = event_wait_deadline(&event_, ZX_TIME_INFINITE, true);
+        if (status != ZX_OK) {
+            return status;
+        }
+    }
+}
+
 zx_status_t InterruptDispatcher::GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) {
     if (slot >= ZX_INTERRUPT_MAX_WAIT_SLOTS)
         return ZX_ERR_INVALID_ARGS;
@@ -88,26 +108,6 @@ zx_status_t InterruptDispatcher::UserSignal(uint32_t slot, zx_time_t timestamp) 
     }
 
     return ZX_ERR_NOT_FOUND;
-}
-
-zx_status_t InterruptDispatcher::Wait(uint64_t* out_signals) {
-    while (true) {
-        uint64_t signals = signals_.exchange(0);
-        if (signals) {
-            if (signals & SIGNAL_MASK(ZX_INTERRUPT_CANCEL)) {
-                return ZX_ERR_CANCELED;
-            }
-            PostWait(signals);
-            *out_signals = signals;
-            return ZX_OK;
-        }
-
-        PreWait();
-        zx_status_t status = event_wait_deadline(&event_, ZX_TIME_INFINITE, true);
-        if (status != ZX_OK) {
-            return status;
-        }
-    }
 }
 
 int InterruptDispatcher::Signal(uint64_t signals, bool resched) {

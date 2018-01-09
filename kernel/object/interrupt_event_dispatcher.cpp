@@ -112,12 +112,6 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
     return ZX_OK;
 }
 
-zx_status_t InterruptEventDispatcher::WaitForInterrupt(uint64_t* out_slots) {
-    canary_.Assert();
-
-    return Wait(out_slots);
-}
-
 void InterruptEventDispatcher::on_zero_handles() {
     for (const auto& interrupt : interrupts_) {
         if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL))
