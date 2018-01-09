@@ -111,11 +111,16 @@ zx_status_t InterruptDispatcher::UserSignal(uint32_t slot, zx_time_t timestamp) 
     return ZX_ERR_NOT_FOUND;
 }
 
+void InterruptDispatcher::on_zero_handles() {
+    for (const auto& interrupt : interrupts_) {
+        if (!interrupt.is_virtual)
+            MaskInterrupt(interrupt.vector);
+    }
+
+    Signal(SIGNAL_MASK(ZX_INTERRUPT_CANCEL), true);
+}
+
 int InterruptDispatcher::Signal(uint64_t signals, bool resched) {
     signals_.fetch_or(signals);
     return event_signal_etc(&event_, resched, ZX_OK);
-}
-
-int InterruptDispatcher::Cancel() {
-    return Signal(SIGNAL_MASK(ZX_INTERRUPT_CANCEL), true);
 }

@@ -106,13 +106,6 @@ zx_status_t PciInterruptDispatcher::Bind(uint32_t slot, uint32_t vector, uint32_
     return AddSlot(slot, vector, false, true);
 }
 
-void PciInterruptDispatcher::on_zero_handles() {
-    if (maskable_)
-        device_->MaskIrq(irq_id_);
-
-    Cancel();
-}
-
 void PciInterruptDispatcher::PreWait() {
     if (maskable_) {
         device_->UnmaskIrq(irq_id_);
@@ -129,9 +122,13 @@ void PciInterruptDispatcher::PostWait(uint64_t signals) {
 }
 
 void PciInterruptDispatcher::MaskInterrupt(uint32_t vector) {
+    if (maskable_)
+        device_->MaskIrq(vector);
 }
 
 void PciInterruptDispatcher::UnmaskInterrupt(uint32_t vector) {
+    if (maskable_)
+        device_->UnmaskIrq(vector);
 }
 
 zx_status_t PciInterruptDispatcher::RegisterInterruptHandler(uint32_t vector, void* data) {

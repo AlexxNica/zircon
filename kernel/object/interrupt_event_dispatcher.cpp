@@ -116,15 +116,6 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
     return ZX_OK;
 }
 
-void InterruptEventDispatcher::on_zero_handles() {
-    for (const auto& interrupt : interrupts_) {
-        if (!interrupt.is_virtual)
-            mask_interrupt(interrupt.vector);
-    }
-
-    Cancel();
-}
-
 enum handler_return InterruptEventDispatcher::IrqHandler(void* ctx) {
     Interrupt* interrupt = reinterpret_cast<Interrupt*>(ctx);
     if (!interrupt->timestamp) {
@@ -165,9 +156,11 @@ void InterruptEventDispatcher::PostWait(uint64_t signals) {
 }
 
 void InterruptEventDispatcher::MaskInterrupt(uint32_t vector) {
+    mask_interrupt(vector);
 }
 
 void InterruptEventDispatcher::UnmaskInterrupt(uint32_t vector) {
+    unmask_interrupt(vector);
 }
 
 zx_status_t InterruptEventDispatcher::RegisterInterruptHandler(uint32_t vector, void* data) {

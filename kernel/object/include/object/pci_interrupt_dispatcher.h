@@ -27,8 +27,6 @@ public:
     zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) final;
 
 protected:
-    void on_zero_handles() final;
-
     void PreWait() final;
     void PostWait(uint64_t signals) final;
     void MaskInterrupt(uint32_t vector) final;

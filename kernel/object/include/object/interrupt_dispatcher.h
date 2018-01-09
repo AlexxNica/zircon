@@ -44,8 +44,9 @@ protected:
 protected:
     InterruptDispatcher();
 
+    void on_zero_handles() final;
+
     int Signal(uint64_t signals, bool resched = false);
-    int Cancel();
 
 protected:
     struct Interrupt {
