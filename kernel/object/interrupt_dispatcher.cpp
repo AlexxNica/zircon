@@ -6,6 +6,8 @@
 
 #include <object/interrupt_dispatcher.h>
 
+#include <fbl/auto_lock.h>
+
 InterruptDispatcher::InterruptDispatcher() : signals_(0) {
     event_init(&event_, false, EVENT_FLAG_AUTOUNSIGNAL);
 }
@@ -34,6 +36,30 @@ zx_status_t InterruptDispatcher::AddSlot(uint32_t slot, uint32_t vector, uint32_
 
     return ZX_OK;
 }
+
+zx_status_t InterruptDispatcher::GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) {
+    if (slot >= ZX_INTERRUPT_MAX_WAIT_SLOTS)
+        return ZX_ERR_INVALID_ARGS;
+
+    fbl::AutoLock lock(&lock_);
+
+    size_t size = interrupts_.size();
+    for (size_t i = 0; i < size; i++) {
+        Interrupt& interrupt = interrupts_[i];
+        if (interrupt.slot == slot) {
+            zx_time_t timestamp = interrupt.timestamp;
+            if (timestamp) {
+                *out_timestamp = timestamp;
+                return ZX_OK;
+            } else {
+                return ZX_ERR_BAD_STATE;
+            }
+        }
+    }
+
+    return ZX_ERR_NOT_FOUND;
+}
+
 
 zx_status_t InterruptDispatcher::UserSignal(uint32_t slot, zx_time_t timestamp) {
     if (slot >= ZX_INTERRUPT_MAX_WAIT_SLOTS)

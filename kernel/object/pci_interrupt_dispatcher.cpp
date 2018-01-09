@@ -39,11 +39,6 @@ pcie_irq_handler_retval_t PciInterruptDispatcher::IrqThunk(const PcieDevice& dev
     PciInterruptDispatcher* thiz
             = reinterpret_cast<PciInterruptDispatcher *>(interrupt->dispatcher);
 
-    if (!thiz->timestamp_) {
-        // only record timestamp if this is the first IRQ since we started waiting
-        thiz->timestamp_ = current_time();
-    }
-
     // Mask the IRQ at the PCIe hardware level if we can, and (if any threads
     // just became runable) tell the kernel to trigger a reschedule event.
     if (thiz->Signal(SIGNAL_MASK(interrupt->slot)) > 0) {
@@ -109,18 +104,6 @@ zx_status_t PciInterruptDispatcher::WaitForInterrupt(uint64_t* out_slots) {
     return Wait(out_slots);
 }
 
-zx_status_t PciInterruptDispatcher::GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) {
-    canary_.Assert();
-
-    if (slot != IRQ_SLOT)
-        return ZX_ERR_INVALID_ARGS;
-    if (!timestamp_)
-        return ZX_ERR_BAD_STATE;
-
-    *out_timestamp = timestamp_;
-    return ZX_OK;
-}
-
 void PciInterruptDispatcher::on_zero_handles() {
     if (maskable_)
         device_->MaskIrq(irq_id_);
@@ -132,8 +115,11 @@ void PciInterruptDispatcher::PreWait() {
     if (maskable_) {
         device_->UnmaskIrq(irq_id_);
     }
-    // clear timestamp so we can know when first IRQ occurs
-    timestamp_ = 0;
+
+    for (auto& interrupt : interrupts_) {
+        // clear timestamp so we can know when first IRQ occurs
+        interrupt.timestamp = 0;
+    }
 }
 
 void PciInterruptDispatcher::PostWait(uint64_t signals) {

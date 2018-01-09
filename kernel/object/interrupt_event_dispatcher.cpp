@@ -128,31 +128,6 @@ zx_status_t InterruptEventDispatcher::WaitForInterrupt(uint64_t* out_slots) {
     return Wait(out_slots);
 }
 
-zx_status_t InterruptEventDispatcher::GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) {
-    canary_.Assert();
-
-    if (slot >= ZX_INTERRUPT_MAX_WAIT_SLOTS)
-        return ZX_ERR_INVALID_ARGS;
-
-    fbl::AutoLock lock(&lock_);
-
-    size_t size = interrupts_.size();
-    for (size_t i = 0; i < size; i++) {
-        Interrupt& interrupt = interrupts_[i];
-        if (interrupt.slot == slot) {
-            zx_time_t timestamp = interrupt.timestamp;
-            if (timestamp) {
-                *out_timestamp = timestamp;
-                return ZX_OK;
-            } else {
-                return ZX_ERR_BAD_STATE;
-            }
-        }
-    }
-
-    return ZX_ERR_NOT_FOUND;
-}
-
 void InterruptEventDispatcher::on_zero_handles() {
     for (const auto& interrupt : interrupts_) {
         if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL))
