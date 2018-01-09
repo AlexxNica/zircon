@@ -30,7 +30,15 @@ pcie_irq_handler_retval_t PciInterruptDispatcher::IrqThunk(const PcieDevice& dev
                                                            uint irq_id,
                                                            void* ctx) {
     DEBUG_ASSERT(ctx);
-    PciInterruptDispatcher* thiz = (PciInterruptDispatcher*)ctx;
+
+    Interrupt* interrupt = reinterpret_cast<Interrupt*>(ctx);
+    if (!interrupt->timestamp) {
+        // only record timestamp if this is the first IRQ since we started waiting
+        interrupt->timestamp = current_time();
+    }
+    PciInterruptDispatcher* thiz
+            = reinterpret_cast<PciInterruptDispatcher *>(interrupt->dispatcher);
+
     if (!thiz->timestamp_) {
         // only record timestamp if this is the first IRQ since we started waiting
         thiz->timestamp_ = current_time();
@@ -38,7 +46,7 @@ pcie_irq_handler_retval_t PciInterruptDispatcher::IrqThunk(const PcieDevice& dev
 
     // Mask the IRQ at the PCIe hardware level if we can, and (if any threads
     // just became runable) tell the kernel to trigger a reschedule event.
-    if (thiz->Signal(1ul << IRQ_SLOT) > 0) {
+    if (thiz->Signal(SIGNAL_MASK(interrupt->slot)) > 0) {
         return PCIE_IRQRET_MASK_AND_RESCHED;
     } else {
         return PCIE_IRQRET_MASK;
@@ -70,9 +78,8 @@ zx_status_t PciInterruptDispatcher::Create(
     // created, then attempt to register our dispatcher with the bus driver.
     DEBUG_ASSERT(device);
     interrupt_dispatcher->device_ = device;
-    zx_status_t result = device->RegisterIrqHandler(irq_id,
-                                                           IrqThunk,
-                                                           interrupt_dispatcher);
+
+    zx_status_t result = interrupt_dispatcher->AddSlot(IRQ_SLOT, irq_id, 0);
     if (result != ZX_OK) {
         interrupt_dispatcher->device_ = nullptr;
         return result;

@@ -112,9 +112,7 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
         }
     }
 
-dprintf(INFO, "call AddSlot\n");
     zx_status_t status = AddSlot(slot, vector, options);
-dprintf(INFO, "did AddSlot\n");
     if (status != ZX_OK)
         return status;
 
