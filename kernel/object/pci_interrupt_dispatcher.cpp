@@ -74,7 +74,7 @@ zx_status_t PciInterruptDispatcher::Create(
     DEBUG_ASSERT(device);
     interrupt_dispatcher->device_ = device;
 
-    zx_status_t result = interrupt_dispatcher->AddSlot(IRQ_SLOT, irq_id, 0);
+    zx_status_t result = interrupt_dispatcher->AddSlot(ZX_PCI_INTERRUPT_SLOT, irq_id, 0);
     if (result != ZX_OK) {
         interrupt_dispatcher->device_ = nullptr;
         return result;
@@ -94,8 +94,16 @@ zx_status_t PciInterruptDispatcher::Create(
 zx_status_t PciInterruptDispatcher::Bind(uint32_t slot, uint32_t vector, uint32_t options) {
     canary_.Assert();
 
-    // PCI interrupt handles are automatically bound on creation and unbound on handle close
-    return ZX_ERR_NOT_SUPPORTED;
+    if (slot == ZX_PCI_INTERRUPT_SLOT || slot >= ZX_INTERRUPT_MAX_WAIT_SLOTS)
+        return ZX_ERR_INVALID_ARGS;
+
+    // For PCI interrupt handles we only support binding virtual interrupts
+    if (options != ZX_INTERRUPT_VIRTUAL)
+        return ZX_ERR_INVALID_ARGS;
+
+    fbl::AutoLock lock(&lock_);
+
+    return AddSlot(slot, vector, options);
 }
 
 zx_status_t PciInterruptDispatcher::WaitForInterrupt(uint64_t* out_slots) {

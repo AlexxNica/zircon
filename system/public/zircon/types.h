@@ -278,6 +278,8 @@ typedef uint64_t zx_off_t;
 #define ZX_INTERRUPT_CANCEL 63
 // interrupt wait slots must be in the range 0 - 62
 #define ZX_INTERRUPT_MAX_WAIT_SLOTS  ZX_INTERRUPT_CANCEL
+// PCI interrupt handles use slot 0 for the PCI hardware interrupt
+#define ZX_PCI_INTERRUPT_SLOT 0
 
 // Channel options and limits.
 #define ZX_CHANNEL_READ_MAY_DISCARD         1u

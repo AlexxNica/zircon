@@ -38,8 +38,6 @@ protected:
     void UnregisterInterruptHandler(uint32_t vector) final;
 
 private:
-    static constexpr uint32_t IRQ_SLOT = 0;
-
     static pcie_irq_handler_retval_t IrqThunk(const PcieDevice& dev,
                                               uint irq_id,
                                               void* ctx);

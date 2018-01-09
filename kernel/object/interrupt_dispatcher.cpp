@@ -14,6 +14,15 @@ InterruptDispatcher::InterruptDispatcher() : signals_(0) {
 
 zx_status_t InterruptDispatcher::AddSlot(uint32_t slot, uint32_t vector, uint32_t flags) {
     size_t index = interrupts_.size();
+    bool is_virtual = !!(flags & ZX_INTERRUPT_VIRTUAL);
+
+    for (size_t i = 0; i < index; i++) {
+        const auto& interrupt = interrupts_[i];
+        if (interrupt.slot == slot)
+            return ZX_ERR_ALREADY_BOUND;
+        if (!is_virtual && interrupt.vector == vector)
+            return ZX_ERR_ALREADY_BOUND;
+    }
 
     Interrupt interrupt;
     interrupt.dispatcher = this;
@@ -26,7 +35,7 @@ zx_status_t InterruptDispatcher::AddSlot(uint32_t slot, uint32_t vector, uint32_
     if (!ac.check())
         return ZX_ERR_NO_MEMORY;
 
-    if ((flags & ZX_INTERRUPT_VIRTUAL) == 0) {
+    if (!is_virtual) {
         zx_status_t status = RegisterInterruptHandler(vector, &interrupts_[index]);
         if (status != ZX_OK) {
             interrupts_.erase(index);

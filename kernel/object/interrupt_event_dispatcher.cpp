@@ -53,16 +53,6 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
     fbl::AutoLock lock(&lock_);
 
     bool is_virtual = !!(options & ZX_INTERRUPT_VIRTUAL);
-
-    size_t index = interrupts_.size();
-    for (size_t i = 0; i < index; i++) {
-        const auto& interrupt = interrupts_[i];
-        if (interrupt.slot == slot)
-            return ZX_ERR_ALREADY_BOUND;
-        if (!is_virtual && interrupt.vector == vector)
-            return ZX_ERR_ALREADY_BOUND;
-    }
-
     if (is_virtual) {
         if (options != ZX_INTERRUPT_VIRTUAL) {
             return ZX_ERR_INVALID_ARGS;
