@@ -74,7 +74,7 @@ zx_status_t PciInterruptDispatcher::Create(
     DEBUG_ASSERT(device);
     interrupt_dispatcher->device_ = device;
 
-    zx_status_t result = interrupt_dispatcher->AddSlot(ZX_PCI_INTERRUPT_SLOT, irq_id, 0);
+    zx_status_t result = interrupt_dispatcher->AddSlot(ZX_PCI_INTERRUPT_SLOT, irq_id, maskable, false);
     if (result != ZX_OK) {
         interrupt_dispatcher->device_ = nullptr;
         return result;
@@ -103,7 +103,7 @@ zx_status_t PciInterruptDispatcher::Bind(uint32_t slot, uint32_t vector, uint32_
 
     fbl::AutoLock lock(&lock_);
 
-    return AddSlot(slot, vector, options);
+    return AddSlot(slot, vector, false, true);
 }
 
 void PciInterruptDispatcher::on_zero_handles() {

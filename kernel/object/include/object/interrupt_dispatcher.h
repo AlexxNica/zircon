@@ -39,7 +39,7 @@ protected:
     virtual zx_status_t RegisterInterruptHandler(uint32_t vector, void* data) = 0;
     virtual void UnregisterInterruptHandler(uint32_t vector) = 0;
 
-    zx_status_t AddSlot(uint32_t slot, uint32_t vector, uint32_t flags);
+    zx_status_t AddSlot(uint32_t slot, uint32_t vector, bool is_maskable, bool is_virtual);
 
 protected:
     InterruptDispatcher();
@@ -51,9 +51,10 @@ protected:
     struct Interrupt {
         InterruptDispatcher* dispatcher;
         zx_time_t timestamp;
-        uint32_t flags;
         uint32_t vector;
         uint32_t slot;
+        bool is_maskable;
+        bool is_virtual;
     };
 
     // interrupts bound to this dispatcher

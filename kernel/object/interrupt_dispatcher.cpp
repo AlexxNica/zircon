@@ -12,9 +12,9 @@ InterruptDispatcher::InterruptDispatcher() : signals_(0) {
     event_init(&event_, false, EVENT_FLAG_AUTOUNSIGNAL);
 }
 
-zx_status_t InterruptDispatcher::AddSlot(uint32_t slot, uint32_t vector, uint32_t flags) {
+zx_status_t InterruptDispatcher::AddSlot(uint32_t slot, uint32_t vector, bool is_maskable,
+                                         bool is_virtual) {
     size_t index = interrupts_.size();
-    bool is_virtual = !!(flags & ZX_INTERRUPT_VIRTUAL);
 
     for (size_t i = 0; i < index; i++) {
         const auto& interrupt = interrupts_[i];
@@ -27,7 +27,8 @@ zx_status_t InterruptDispatcher::AddSlot(uint32_t slot, uint32_t vector, uint32_
     Interrupt interrupt;
     interrupt.dispatcher = this;
     interrupt.timestamp = 0;
-    interrupt.flags = flags;
+    interrupt.is_maskable = is_maskable;
+    interrupt.is_virtual = is_virtual;
     interrupt.vector = vector;
     interrupt.slot = slot;
     fbl::AllocChecker ac;
@@ -98,7 +99,7 @@ zx_status_t InterruptDispatcher::UserSignal(uint32_t slot, zx_time_t timestamp) 
     for (size_t i = 0; i < size; i++) {
         Interrupt& interrupt = interrupts_[i];
         if (interrupt.slot == slot) {
-            if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL))
+            if (!interrupt.is_virtual)
                 return ZX_ERR_BAD_STATE;
             if (!interrupt.timestamp)
                 interrupt.timestamp = timestamp;

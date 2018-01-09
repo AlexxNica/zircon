@@ -37,7 +37,7 @@ zx_status_t InterruptEventDispatcher::Create(fbl::RefPtr<Dispatcher>* dispatcher
 
 InterruptEventDispatcher::~InterruptEventDispatcher() {
     for (const auto& interrupt : interrupts_) {
-        if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL)) {
+        if (!interrupt.is_virtual) {
             mask_interrupt(interrupt.vector);
             register_int_handler(interrupt.vector, nullptr, nullptr);
         }
@@ -53,6 +53,8 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
     fbl::AutoLock lock(&lock_);
 
     bool is_virtual = !!(options & ZX_INTERRUPT_VIRTUAL);
+    bool is_maskable = false;
+
     if (is_virtual) {
         if (options != ZX_INTERRUPT_VIRTUAL) {
             return ZX_ERR_INVALID_ARGS;
@@ -86,10 +88,12 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
             case ZX_INTERRUPT_MODE_LEVEL_LOW:
                 tm = IRQ_TRIGGER_MODE_LEVEL;
                 pol = IRQ_POLARITY_ACTIVE_LOW;
+                is_maskable = true;
                 break;
             case ZX_INTERRUPT_MODE_LEVEL_HIGH:
                 tm = IRQ_TRIGGER_MODE_LEVEL;
                 pol = IRQ_POLARITY_ACTIVE_HIGH;
+                is_maskable = true;
                 break;
             default:
                 return ZX_ERR_INVALID_ARGS;
@@ -102,7 +106,7 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
         }
     }
 
-    zx_status_t status = AddSlot(slot, vector, options);
+    zx_status_t status = AddSlot(slot, vector, is_maskable, is_virtual);
     if (status != ZX_OK)
         return status;
 
@@ -114,7 +118,7 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
 
 void InterruptEventDispatcher::on_zero_handles() {
     for (const auto& interrupt : interrupts_) {
-        if (!(interrupt.flags & ZX_INTERRUPT_VIRTUAL))
+        if (!interrupt.is_virtual)
             mask_interrupt(interrupt.vector);
     }
 
@@ -130,7 +134,7 @@ enum handler_return InterruptEventDispatcher::IrqHandler(void* ctx) {
     InterruptEventDispatcher* thiz
             = reinterpret_cast<InterruptEventDispatcher *>(interrupt->dispatcher);
 
-    if (interrupt->flags & ZX_INTERRUPT_MODE_LEVEL_MASK)
+    if (interrupt->is_maskable)
         mask_interrupt(interrupt->vector);
 
     if (thiz->Signal(SIGNAL_MASK(interrupt->slot)) > 0) {
@@ -144,8 +148,7 @@ void InterruptEventDispatcher::PreWait() {
     uint64_t signals = current_slots_;
 
     for (auto& interrupt : interrupts_) {
-        if ((interrupt.flags & ZX_INTERRUPT_MODE_LEVEL_MASK) &&
-                (signals & (SIGNAL_MASK(interrupt.slot))))
+        if (interrupt.is_maskable &&  (signals & (SIGNAL_MASK(interrupt.slot))))
             unmask_interrupt(interrupt.vector);
         // clear timestamp so we can know when first IRQ occurs
         interrupt.timestamp = 0;
@@ -156,8 +159,7 @@ void InterruptEventDispatcher::PostWait(uint64_t signals) {
     current_slots_ = signals;
 
     for (const auto& interrupt : interrupts_) {
-        if ((interrupt.flags & ZX_INTERRUPT_MODE_LEVEL_MASK) &&
-                (signals & (SIGNAL_MASK(interrupt.slot))))
+        if (interrupt.is_maskable &&  (signals & (SIGNAL_MASK(interrupt.slot))))
             mask_interrupt(interrupt.vector);
     }
 }
