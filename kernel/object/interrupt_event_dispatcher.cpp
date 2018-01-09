@@ -112,26 +112,14 @@ zx_status_t InterruptEventDispatcher::Bind(uint32_t slot, uint32_t vector, uint3
         }
     }
 
-    Interrupt interrupt;
-    interrupt.dispatcher = this;
-    interrupt.timestamp = 0;
-    interrupt.flags = options;
-    interrupt.vector = vector;
-    interrupt.slot = slot;
-    fbl::AllocChecker ac;
-    interrupts_.push_back(interrupt, &ac);
-    if (!ac.check())
-        return ZX_ERR_NO_MEMORY;
+dprintf(INFO, "call AddSlot\n");
+    zx_status_t status = AddSlot(slot, vector, options);
+dprintf(INFO, "did AddSlot\n");
+    if (status != ZX_OK)
+        return status;
 
-    if (!is_virtual) {
-        zx_status_t status = register_int_handler(vector, IrqHandler, &interrupts_[index]);
-        if (status != ZX_OK) {
-            interrupts_.erase(index);
-            return status;
-        }
-
+    if (!is_virtual)
         unmask_interrupt(vector);
-    }
 
     return ZX_OK;
 }
@@ -215,4 +203,18 @@ void InterruptEventDispatcher::PostWait(uint64_t signals) {
                 (signals & (SIGNAL_MASK(interrupt.slot))))
             mask_interrupt(interrupt.vector);
     }
+}
+
+void InterruptEventDispatcher::MaskInterrupt(uint32_t vector) {
+}
+
+void InterruptEventDispatcher::UnmaskInterrupt(uint32_t vector) {
+}
+
+zx_status_t InterruptEventDispatcher::RegisterInterruptHandler(uint32_t vector, void* data) {
+    return register_int_handler(vector, IrqHandler, data);
+}
+
+void InterruptEventDispatcher::UnregisterInterruptHandler(uint32_t vector) {
+    register_int_handler(vector, nullptr, nullptr);
 }

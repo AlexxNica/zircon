@@ -10,6 +10,31 @@ InterruptDispatcher::InterruptDispatcher() : signals_(0) {
     event_init(&event_, false, EVENT_FLAG_AUTOUNSIGNAL);
 }
 
+zx_status_t InterruptDispatcher::AddSlot(uint32_t slot, uint32_t vector, uint32_t flags) {
+    size_t index = interrupts_.size();
+
+    Interrupt interrupt;
+    interrupt.dispatcher = this;
+    interrupt.timestamp = 0;
+    interrupt.flags = flags;
+    interrupt.vector = vector;
+    interrupt.slot = slot;
+    fbl::AllocChecker ac;
+    interrupts_.push_back(interrupt, &ac);
+    if (!ac.check())
+        return ZX_ERR_NO_MEMORY;
+
+    if ((flags & ZX_INTERRUPT_VIRTUAL) == 0) {
+        zx_status_t status = RegisterInterruptHandler(vector, &interrupts_[index]);
+        if (status != ZX_OK) {
+            interrupts_.erase(index);
+            return status;
+        }
+    }
+
+    return ZX_OK;
+}
+
 zx_status_t InterruptDispatcher::UserSignal(uint32_t slot, zx_time_t timestamp) {
     if (slot >= ZX_INTERRUPT_MAX_WAIT_SLOTS)
         return ZX_ERR_INVALID_ARGS;

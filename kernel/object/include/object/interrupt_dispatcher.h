@@ -30,8 +30,16 @@ public:
     virtual zx_status_t Bind(uint32_t slot, uint32_t vector, uint32_t options) = 0;
     virtual zx_status_t WaitForInterrupt(uint64_t* out_slots) = 0;
     virtual zx_status_t GetTimeStamp(uint32_t slot, zx_time_t* out_timestamp) = 0;
+
+protected:
     virtual void PreWait() = 0;
     virtual void PostWait(uint64_t signals) = 0;
+    virtual void MaskInterrupt(uint32_t vector) = 0;
+    virtual void UnmaskInterrupt(uint32_t vector) = 0;
+    virtual zx_status_t RegisterInterruptHandler(uint32_t vector, void* data) = 0;
+    virtual void UnregisterInterruptHandler(uint32_t vector) = 0;
+
+    zx_status_t AddSlot(uint32_t slot, uint32_t vector, uint32_t flags);
 
 protected:
     InterruptDispatcher();

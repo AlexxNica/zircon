@@ -1345,9 +1345,9 @@ static zx_status_t _thread_print_backtrace(thread_t* t, void *fp) {
     }
 
     for (size_t n = 0; n < count; n++) {
-        printf("bt#%02zu: %p\n", n, tb.pc[n]);
+        dprintf(INFO, "bt#%02zu: %p\n", n, tb.pc[n]);
     }
-    printf("bt#%02zu: end\n", count);
+    dprintf(INFO, "bt#%02zu: end\n", count);
 
     return ZX_OK;
 }

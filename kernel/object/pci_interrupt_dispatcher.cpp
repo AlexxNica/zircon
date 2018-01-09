@@ -133,4 +133,18 @@ void PciInterruptDispatcher::PostWait(uint64_t signals) {
     // nothing to do here
 }
 
+void PciInterruptDispatcher::MaskInterrupt(uint32_t vector) {
+}
+
+void PciInterruptDispatcher::UnmaskInterrupt(uint32_t vector) {
+}
+
+zx_status_t PciInterruptDispatcher::RegisterInterruptHandler(uint32_t vector, void* data) {
+    return device_->RegisterIrqHandler(vector, IrqThunk, data);
+}
+
+void PciInterruptDispatcher::UnregisterInterruptHandler(uint32_t vector) {
+    device_->RegisterIrqHandler(vector, nullptr, nullptr);
+}
+
 #endif  // if WITH_DEV_PCIE
