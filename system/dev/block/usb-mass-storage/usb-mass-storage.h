@@ -6,7 +6,7 @@
 
 #include <inttypes.h>
 #include <ddk/device.h>
-#include <ddk/iotxn.h>
+#include <ddk/protocol/block.h>
 #include <ddk/protocol/usb.h>
 #include <sync/completion.h>
 #include <zircon/device/block.h>
@@ -16,7 +16,7 @@
 
 // stack allocated struct used to implement IOCTL_DEVICE_SYNC
 typedef struct {
-    iotxn_t* iotxn;             // iotxn we are waiting to complete
+    struct ums_txn* txn;        // txn we are waiting to complete
     completion_t completion;    // completion for IOCTL_DEVICE_SYNC to wait on
     list_node_t node;           // node for ums_t.sync_nodes list
 } ums_sync_node_t;
@@ -59,18 +59,25 @@ typedef struct {
     thrd_t worker_thread;
     bool dead;
 
-    // list of queued io transactions
-    list_node_t queued_iotxns;
+    // list of queued transactions
+    list_node_t queued_txns;
 
-    completion_t iotxn_completion;  // signals ums_worker_thread when new iotxns are available
+    completion_t txn_completion;    // signals ums_worker_thread when new txns are available
                                     // and when device is dead
-    mtx_t iotxn_lock;               // protects queued_iotxns, iotxn_completion and dead
+    mtx_t txn_lock;                 // protects queued_txns, txn_completion and dead
 
     list_node_t sync_nodes;         // list of active ums_sync_node_t
-    iotxn_t* curr_txn;              // current iotxn being processed (needed for IOCTL_DEVICE_SYNC)
+    struct ums_txn* curr_txn;       // current txn being processed (needed for IOCTL_DEVICE_SYNC)
 
     ums_block_t block_devs[];
 } ums_t;
 #define block_to_ums(block) containerof(block - block->lun, ums_t, block_devs)
+
+typedef struct ums_txn {
+    block_op_t op;
+    list_node_t node;
+    ums_block_t* dev;
+} ums_txn_t;
+#define block_op_to_txn(op) containerof(op, ums_txn_t, op)
 
 zx_status_t ums_block_add_device(ums_t* ums, ums_block_t* dev);

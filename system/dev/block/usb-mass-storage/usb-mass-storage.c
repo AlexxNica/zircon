@@ -27,6 +27,9 @@
 
 static csw_status_t ums_verify_csw(ums_t* ums, usb_request_t* csw_request, uint32_t* out_residue);
 
+static inline void txn_complete(ums_txn_t* txn, zx_status_t status) {
+    txn->op.completion_cb(&txn->op, status);
+}
 
 static zx_status_t ums_reset(ums_t* ums) {
     // for all these control requests, data is null, length is 0 because nothing is passed back
@@ -242,12 +245,11 @@ static zx_status_t ums_mode_sense6(ums_t* ums, uint8_t lun, scsi_mode_sense_6_da
     return status;
 }
 
-static zx_status_t ums_data_transfer(ums_t* ums, iotxn_t* txn, zx_off_t offset, size_t length,
+static zx_status_t ums_data_transfer(ums_t* ums, ums_txn_t* txn, zx_off_t offset, size_t length,
                                      uint8_t ep_address) {
     usb_request_t* req = &ums->data_transfer_req;
 
-    zx_status_t status = usb_request_init(req, txn->vmo_handle,
-                                          txn->vmo_offset + offset,
+    zx_status_t status = usb_request_init(req, txn->op.u.rw.vmo, txn->op.u.rw.offset_vmo + offset,
                                           length, ep_address);
     if (status != ZX_OK) {
         return status;
@@ -268,19 +270,13 @@ static zx_status_t ums_data_transfer(ums_t* ums, iotxn_t* txn, zx_off_t offset, 
     return status;
 }
 
-static ssize_t ums_read(ums_block_t* dev, iotxn_t* txn) {
+static ssize_t ums_read(ums_block_t* dev, ums_txn_t* txn) {
     ums_t* ums = block_to_ums(dev);
 
-    uint64_t lba = txn->offset / dev->block_size;
-    if (lba > dev->total_blocks) {
+    uint64_t lba = txn->op.u.rw.offset_dev;
+    uint32_t num_blocks = txn->op.u.rw.length + 1;
+    if (lba + num_blocks > dev->total_blocks) {
         return ZX_ERR_OUT_OF_RANGE;
-    }
-    uint32_t num_blocks = txn->length / dev->block_size;
-    if (lba + num_blocks >= dev->total_blocks) {
-        num_blocks = dev->total_blocks - lba;
-        if (num_blocks == 0) {
-            return 0;
-        }
     }
 
     size_t blocks_transferred = 0;
@@ -340,19 +336,13 @@ static ssize_t ums_read(ums_block_t* dev, iotxn_t* txn) {
     }
 }
 
-static ssize_t ums_write(ums_block_t* dev, iotxn_t* txn) {
+static ssize_t ums_write(ums_block_t* dev, ums_txn_t* txn) {
     ums_t* ums = block_to_ums(dev);
 
-    uint64_t lba = txn->offset / dev->block_size;
-    if (lba > dev->total_blocks) {
+    uint64_t lba = txn->op.u.rw.offset_dev;
+    uint32_t num_blocks = txn->op.u.rw.length + 1;
+    if (lba + num_blocks > dev->total_blocks) {
         return ZX_ERR_OUT_OF_RANGE;
-    }
-    uint32_t num_blocks = txn->length / dev->block_size;
-    if (lba + num_blocks >= dev->total_blocks) {
-        num_blocks = dev->total_blocks - lba;
-        if (num_blocks == 0) {
-            return 0;
-        }
     }
 
     size_t blocks_transferred = 0;
@@ -415,10 +405,10 @@ static void ums_unbind(void* ctx) {
     ums_t* ums = ctx;
 
     // terminate our worker thread
-    mtx_lock(&ums->iotxn_lock);
+    mtx_lock(&ums->txn_lock);
     ums->dead = true;
-    mtx_unlock(&ums->iotxn_lock);
-    completion_signal(&ums->iotxn_completion);
+    mtx_unlock(&ums->txn_lock);
+    completion_signal(&ums->txn_completion);
 
     // wait for worker thread to finish before removing devices
     thrd_join(ums->worker_thread, NULL);
@@ -573,72 +563,67 @@ static int ums_worker_thread(void* arg) {
     bool wait = true;
     while (1) {
         if (wait) {
-            status = completion_wait(&ums->iotxn_completion, ZX_SEC(1));
+            status = completion_wait(&ums->txn_completion, ZX_SEC(1));
             if (status == ZX_ERR_TIMED_OUT) {
                 if (ums_check_luns_ready(ums) != ZX_OK) {
                     return status;
                 }
                 continue;
             }
-            completion_reset(&ums->iotxn_completion);
+            completion_reset(&ums->txn_completion);
         }
 
-        mtx_lock(&ums->iotxn_lock);
+        mtx_lock(&ums->txn_lock);
         if (ums->dead) {
-            mtx_unlock(&ums->iotxn_lock);
+            mtx_unlock(&ums->txn_lock);
             break;
         }
-        iotxn_t* txn = list_remove_head_type(&ums->queued_iotxns, iotxn_t, node);
+        ums_txn_t* txn = list_remove_head_type(&ums->queued_txns, ums_txn_t, node);
         if (txn == NULL) {
-            mtx_unlock(&ums->iotxn_lock);
+            mtx_unlock(&ums->txn_lock);
             wait = true;
             continue;
         }
         ums->curr_txn = txn;
-        mtx_unlock(&ums->iotxn_lock);
+        mtx_unlock(&ums->txn_lock);
 
-        ums_block_t* dev = txn->context;
+        ums_block_t* dev = txn->dev;
 
         zx_status_t status;
-        if (txn->opcode == IOTXN_OP_READ) {
+        if (txn->op.u.command == BLOCK_OP_READ) {
             status = ums_read(dev, txn);
-        }else if (txn->opcode == IOTXN_OP_WRITE) {
+        }else if (txn->op.u.command == BLOCK_OP_WRITE) {
             status = ums_write(dev, txn);
         } else {
             status = ZX_ERR_INVALID_ARGS;
         }
 
-        mtx_lock(&ums->iotxn_lock);
+        mtx_lock(&ums->txn_lock);
         // unblock calls to IOCTL_DEVICE_SYNC that are waiting for curr_txn to complete
         ums_sync_node_t* sync_node;
         ums_sync_node_t* temp;
         list_for_every_entry_safe(&ums->sync_nodes, sync_node, temp, ums_sync_node_t, node) {
-            if (sync_node->iotxn == txn) {
+            if (sync_node->txn == txn) {
                 list_delete(&sync_node->node);
                 completion_signal(&sync_node->completion);
             }
         }
         ums->curr_txn = NULL;
         // make sure we have processed all queued transactions before waiting again
-        wait = list_is_empty(&ums->queued_iotxns);
-        mtx_unlock(&ums->iotxn_lock);
-
-        if (status >= 0) {
-            iotxn_complete(txn, ZX_OK, txn->length);
-        } else {
-            iotxn_complete(txn, status, 0);
-        }
+        wait = list_is_empty(&ums->queued_txns);
+        mtx_unlock(&ums->txn_lock);
+        txn_complete(txn, status);
     }
 
     // complete any pending txns
     list_node_t txns = LIST_INITIAL_VALUE(txns);
-    mtx_lock(&ums->iotxn_lock);
-    list_move(&ums->queued_iotxns, &txns);
-    mtx_unlock(&ums->iotxn_lock);
+    mtx_lock(&ums->txn_lock);
+    list_move(&ums->queued_txns, &txns);
+    mtx_unlock(&ums->txn_lock);
 
-    iotxn_t* txn;
-    while ((txn = list_remove_head_type(&ums->queued_iotxns, iotxn_t, node)) != NULL) {
-        iotxn_complete(txn, ZX_ERR_IO_NOT_PRESENT, 0);
+    ums_txn_t* txn;
+    while ((txn = list_remove_head_type(&ums->queued_txns, ums_txn_t, node)) != NULL) {
+        txn_complete(txn, ZX_ERR_IO_NOT_PRESENT);
     }
 
     return ZX_OK;
@@ -719,10 +704,10 @@ static zx_status_t ums_bind(void* ctx, zx_device_t* device) {
         dev->lun = lun;
     }
 
-    list_initialize(&ums->queued_iotxns);
+    list_initialize(&ums->queued_txns);
     list_initialize(&ums->sync_nodes);
-    completion_reset(&ums->iotxn_completion);
-    mtx_init(&ums->iotxn_lock, mtx_plain);
+    completion_reset(&ums->txn_completion);
+    mtx_init(&ums->txn_lock, mtx_plain);
 
     ums->usb_zxdev = device;
     memcpy(&ums->usb, &usb, sizeof(ums->usb));

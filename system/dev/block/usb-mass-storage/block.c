@@ -7,26 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 
-static void ums_block_queue(void* ctx, iotxn_t* txn) {
-    ums_block_t* dev = ctx;
-
-    if (txn->offset % dev->block_size) {
-        iotxn_complete(txn, ZX_ERR_INVALID_ARGS, 0);
-        return;
-    }
-    if (txn->length % dev->block_size) {
-        iotxn_complete(txn, ZX_ERR_INVALID_ARGS, 0);
-        return;
-    }
-    txn->context = dev;
-
-    ums_t* ums = block_to_ums(dev);
-    mtx_lock(&ums->iotxn_lock);
-    list_add_tail(&ums->queued_iotxns, &txn->node);
-    mtx_unlock(&ums->iotxn_lock);
-    completion_signal(&ums->iotxn_completion);
-}
-
 static void ums_get_info(void* ctx, block_info_t* info) {
     ums_block_t* dev = ctx;
     memset(info, 0, sizeof(*info));
@@ -34,6 +14,27 @@ static void ums_get_info(void* ctx, block_info_t* info) {
     info->block_count = dev->total_blocks;
     info->flags = dev->flags;
 }
+
+static void ums_block_query(void* ctx, block_info_t* info_out, size_t* block_op_size_out) {
+    ums_get_info(ctx, info_out);
+    *block_op_size_out = sizeof(ums_txn_t) - sizeof(block_op_t);
+}
+
+static void ums_block_queue(void* ctx, block_op_t* op) {
+    ums_block_t* dev = ctx;
+    ums_t* ums = block_to_ums(dev);
+    ums_txn_t* txn = block_op_to_txn(op);
+
+    mtx_lock(&ums->txn_lock);
+    list_add_tail(&ums->queued_txns, &txn->node);
+    mtx_unlock(&ums->txn_lock);
+    completion_signal(&ums->txn_completion);
+}
+
+static block_protocol_ops_t ums_block_ops = {
+    .query = ums_block_query,
+    .queue = ums_block_queue,
+};
 
 static zx_status_t ums_block_ioctl(void* ctx, uint32_t op, const void* cmd, size_t cmdlen,
                                    void* reply, size_t max, size_t* out_actual) {
@@ -57,20 +58,20 @@ static zx_status_t ums_block_ioctl(void* ctx, uint32_t op, const void* cmd, size
         ums_sync_node_t node;
 
         ums_t* ums = block_to_ums(dev);
-        mtx_lock(&ums->iotxn_lock);
-        iotxn_t* txn = list_peek_tail_type(&ums->queued_iotxns, iotxn_t, node);
+        mtx_lock(&ums->txn_lock);
+        ums_txn_t* txn = list_peek_tail_type(&ums->queued_txns, ums_txn_t, node);
         if (!txn) {
             txn = ums->curr_txn;
         }
         if (!txn) {
-            mtx_unlock(&ums->iotxn_lock);
+            mtx_unlock(&ums->txn_lock);
             return ZX_OK;
         }
         // queue a stack allocated sync node on ums_t.sync_nodes
-        node.iotxn = txn;
+        node.txn = txn;
         completion_reset(&node.completion);
         list_add_head(&ums->sync_nodes, &node.node);
-        mtx_unlock(&ums->iotxn_lock);
+        mtx_unlock(&ums->txn_lock);
 
         return completion_wait(&node.completion, ZX_TIME_INFINITE);
     }
@@ -86,7 +87,6 @@ static zx_off_t ums_block_get_size(void* ctx) {
 
 static zx_protocol_device_t ums_block_proto = {
     .version = DEVICE_OPS_VERSION,
-    .iotxn_queue = ums_block_queue,
     .ioctl = ums_block_ioctl,
     .get_size = ums_block_get_size,
 };
@@ -101,6 +101,7 @@ zx_status_t ums_block_add_device(ums_t* ums, ums_block_t* dev) {
         .ctx = dev,
         .ops = &ums_block_proto,
         .proto_id = ZX_PROTOCOL_BLOCK_CORE,
+        .proto_ops = &ums_block_ops,
     };
 
     return device_add(ums->zxdev, &args, &dev->zxdev);
